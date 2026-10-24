@@ -1,0 +1,5 @@
+# Python dependencies for video-summarizer skill
+# Install with: pip install -r requirements.txt
+yt-dlp>=2025.1.0
+faster-whisper>=1.1.0
+numpy>=1.26.0

@@ -11,6 +11,8 @@ description: >-
 
 Turns any video into **transcript + metadata + timestamped frame contact sheets** (`4x2` grids), ready to be summarized by your agent and ingested into your Obsidian LLM Wiki + Engram database.
 
+> 📦 **Dependencies & Official Download Links:** See [REQUIREMENTS.md](./REQUIREMENTS.md) and [requirements.txt](./requirements.txt) (`pip install -r requirements.txt` + `winget install Gyan.FFmpeg`).
+
 ## 1. Run the pipeline
 
 ```bash
