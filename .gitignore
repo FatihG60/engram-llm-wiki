@@ -1,0 +1,20 @@
+# Byte-compiled / cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# SQLite databases & WAL files (local user data)
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# Environment & OS files
+.env
+.DS_Store
+Thumbs.db
+
+# Local user vault instance (keep vault-template/ tracked)
+/my-vault/
+/Brain/
