@@ -1,3 +1,10 @@
+---
+title: "Karpathy LLM Wiki Pattern"
+source_url: https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f
+ingested_at: 2026-10-24
+tags: [raw-source, immutable, clipped]
+---
+
 # LLM Wiki
 
 A pattern for building personal knowledge bases using LLMs.

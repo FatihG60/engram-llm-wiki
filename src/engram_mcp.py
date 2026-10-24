@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
-"""Engram + Karpathy LLM Wiki MCP Server (JSON-RPC 2.0 over stdio).
+"""Engram + Karpathy LLM Wiki MCP Server v2.0 (JSON-RPC 2.0 over stdio).
 
-Exposes 7 Personal Knowledge Base tools to Claude Code, Google Antigravity, Cursor, Windsurf, and Hermes Agent:
-  - engram_search   : SQLite FTS5 BM25 + Recency Weighted search (<0.5s)
-  - engram_get      : Fetch full raw content for a record by ID or source_key
-  - engram_remember : Save an explicit institutional memory / atom
-  - engram_sync     : Run delta connectors (Obsidian, Claude, Antigravity, Hermes, Videos)
-  - engram_stats    : Check knowledge base health & connector status
-  - engram_lint     : Run Karpathy LLM Wiki health-check (broken links, orphans, YAML, MOCs)
-  - engram_log      : Append or read chronological entries in Brain/log.md
+Exposes 9 Personal Knowledge Base tools to Claude Code, Google Antigravity, Cursor, Windsurf, and Hermes Agent:
+  - engram_search    : SQLite FTS5 BM25 + Bilingual TR<->EN Expansion + Substring Fallback + Recency search (<0.5s)
+  - engram_get       : Fetch full raw content for a record by ID or source_key
+  - engram_remember  : Save an explicit institutional memory / atom
+  - engram_sync      : Run delta connectors (Obsidian, Claude, Antigravity, Hermes, Videos)
+  - engram_stats     : Check knowledge base health & connector status
+  - engram_ingest    : Clip a web URL or local document into Brain/raw/ + download images to raw/assets/
+  - engram_lint      : Karpathy LLM Wiki health-check + PageRank Hubs + Unlinked Mentions (--fix) + Deep Ollama Contradiction Audit (--deep)
+  - engram_log       : Append or read chronological entries in Brain/log.md
+  - engram_dashboard : Generate single-file interactive HTML Knowledge Graph & Telemetry Dashboard
 """
 from __future__ import annotations
 
@@ -26,15 +28,15 @@ TOOLS = [
         "description": (
             "Search the user's Personal Knowledge Base (Engram: Obsidian Vault, Claude Code sessions, "
             "Antigravity transcripts, Hermes sessions, and Video summaries) using SQLite FTS5 BM25 + "
-            "Recency Weighting. Returns summaries, synthetic questions, and extracted Atoms (errors, fixes, "
-            "commands, decisions) plus pointers to raw items."
+            "Bilingual TR<->EN Query Expansion + Substring Fallback + Recency Weighting. Returns summaries, "
+            "synthetic questions, and extracted Atoms (errors, fixes, commands, decisions) plus pointers."
         ),
         "inputSchema": {
             "type": "object",
             "properties": {
                 "query": {
                     "type": "string",
-                    "description": "Keywords or natural question to search for (BM25 match on title, summary, question, atoms, tags, raw text).",
+                    "description": "Keywords or natural question to search for (supports Turkish & English automatic technical synonym expansion and code symbol substring matching).",
                 },
                 "source_type": {
                     "type": "string",
@@ -66,7 +68,7 @@ TOOLS = [
             "properties": {
                 "id": {
                     "type": ["integer", "string"],
-                    "description": "The numeric item id or source_key string (e.g. '12' or 'obsidian:Architecture/...').",
+                    "description": "The numeric item id or source_key string (e.g. '12' or 'obsidian:Yerel AI/...').",
                 }
             },
             "required": ["id"],
@@ -119,11 +121,39 @@ TOOLS = [
         },
     },
     {
+        "name": "engram_ingest",
+        "description": (
+            "Clip a web URL (article, blog post, GitHub Gist/README, documentation) or local file into "
+            "Brain/raw/YYYY-MM-DD_<slug>.md as an immutable raw source, download referenced images to "
+            "Brain/raw/assets/, index into Engram, and log to Brain/log.md."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "source": {
+                    "type": "string",
+                    "description": "Web URL (http/https) or local file path to ingest.",
+                },
+                "title": {
+                    "type": "string",
+                    "description": "Optional custom title for the clipped raw source.",
+                },
+                "download_assets": {
+                    "type": "boolean",
+                    "default": True,
+                    "description": "Download referenced images into Brain/raw/assets/ (default true).",
+                },
+            },
+            "required": ["source"],
+        },
+    },
+    {
         "name": "engram_lint",
         "description": (
-            "Run Andrej Karpathy's LLM Wiki health-check (lint) across the Obsidian Vault. "
-            "Detects broken [[Wikilinks]], orphan pages with 0 inbound links, dead-end pages with 0 outbound links, "
-            "missing YAML frontmatter fields, and notes missing from their folder's MOC."
+            "Run Andrej Karpathy's LLM Wiki health-check (lint v2.0) across the Obsidian Vault. "
+            "Detects broken [[Wikilinks]], orphan pages, dead-end pages, missing YAML frontmatter, "
+            "unindexed MOC notes, computes PageRank hub centrality (`top_hubs`), detects `unlinked_mentions` "
+            "(with optional `fix_unlinked=true` auto-linker), and runs `deep_lint=true` local Ollama semantic contradiction check."
         ),
         "inputSchema": {
             "type": "object",
@@ -132,7 +162,17 @@ TOOLS = [
                     "type": "boolean",
                     "default": False,
                     "description": "If true, appends the lint summary to Brain/log.md.",
-                }
+                },
+                "fix_unlinked": {
+                    "type": "boolean",
+                    "default": False,
+                    "description": "If true, automatically wraps unlinked mentions of known note aliases in [[Wikilinks]].",
+                },
+                "deep_lint": {
+                    "type": "boolean",
+                    "default": False,
+                    "description": "If true, runs local Ollama semantic contradiction check across notes in each MOC folder.",
+                },
             },
         },
     },
@@ -174,6 +214,23 @@ TOOLS = [
             },
         },
     },
+    {
+        "name": "engram_dashboard",
+        "description": (
+            "Generate a single-file interactive HTML Knowledge Graph & Institutional Memory Dashboard "
+            "(force-directed Obsidian graph, KPI strip, chronological log.md timeline, and live atom explorer)."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "open_browser": {
+                    "type": "boolean",
+                    "default": False,
+                    "description": "If true, opens the generated dashboard.html in the default browser.",
+                }
+            },
+        },
+    },
 ]
 
 
@@ -209,8 +266,19 @@ def handle_tool_call(name: str, args: dict[str, Any]) -> Any:
             return engram.sync_all(con, enrich_count=int(args.get("enrich_count", 0)))
         elif name == "engram_stats":
             return engram.get_stats(con)
+        elif name == "engram_ingest":
+            return engram.ingest_source(
+                con,
+                str(args.get("source", "")),
+                title=args.get("title"),
+                download_assets=bool(args.get("download_assets", True)),
+            )
         elif name == "engram_lint":
-            return engram.lint_wiki(log_result=bool(args.get("log_result", False)))
+            return engram.lint_wiki(
+                log_result=bool(args.get("log_result", False)),
+                fix_unlinked=bool(args.get("fix_unlinked", False)),
+                deep_lint=bool(args.get("deep_lint", False)),
+            )
         elif name == "engram_log":
             mode = str(args.get("mode", "append"))
             if mode == "tail":
@@ -219,6 +287,11 @@ def handle_tool_call(name: str, args: dict[str, Any]) -> Any:
                 action=str(args.get("action", "ingest")),
                 title=str(args.get("title", "Wiki Update")),
                 details=args.get("details") or [],
+            )
+        elif name == "engram_dashboard":
+            return engram.generate_dashboard(
+                con,
+                open_browser=bool(args.get("open_browser", False)),
             )
         else:
             raise ValueError(f"Unknown tool: {name}")
@@ -262,7 +335,7 @@ def main() -> None:
                 "result": {
                     "protocolVersion": client_proto,
                     "capabilities": {"tools": {}},
-                    "serverInfo": {"name": "engram", "version": "1.1.0"},
+                    "serverInfo": {"name": "engram", "version": "2.0.0"},
                 },
             })
         elif method == "ping":

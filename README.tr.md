@@ -85,7 +85,7 @@ Kurulum betiği otomatik olarak:
 
 ---
 
-## 🔌 MCP Sunucu Yapılandırması (7 Araç)
+## 🔌 MCP Sunucu Yapılandırması (9 Araç — v2.0)
 
 Ajanınızın MCP ayar dosyasına (`~/.claude.json`, Cursor MCP veya Antigravity `mcp_config.json`) şu bloğu ekleyin:
 
@@ -104,16 +104,18 @@ Ajanınızın MCP ayar dosyasına (`~/.claude.json`, Cursor MCP veya Antigravity
 }
 ```
 
-### Sunulan 7 MCP Aracı
+### Sunulan 9 MCP Aracı (v2.0)
 | Araç | Açıklama |
 |---|---|
-| `engram_search` | 5 kaynak üzerinde `<0.5 sn` içinde BM25 + Recency Weighting araması yapar; `summary`, `question`, `atoms` (`errors`, `fixes`, `commands`, `decisions`) ve `pointer` döner. |
+| `engram_search` | 5 kaynak üzerinde `<0.5 sn` içinde BM25 + **Çift Dilli TR↔EN Teknik Terim Genişletme** + **Alt-Dizge (Substring) Kod Sembolü Yakalama** + Recency Weighting araması yapar. |
 | `engram_get` | Eşleşen kaydın tam `raw_text` içeriğini getirir (Prompt-Injection korumalı). |
 | `engram_remember` | Yeni keşfedilen bir kök nedeni, çözümü, çalışan komutu veya mimari kararı doğrudan hafızaya kaydeder. |
 | `engram_sync` | 5 bağlayıcıdaki yeni/değişen dosyaları tarar (isteğe bağlı yerel Ollama `gemma4` zenginleştirmesiyle). |
 | `engram_stats` | Veritabanı boyutunu, kaynak bazlı kayıt sayılarını ve bağlayıcı sağlık durumunu gösterir. |
-| `engram_lint` | **Karpathy LLM Wiki Sağlık Denetimi:** Kırık `[[Wikilink]]` bağlantılarını, yetim sayfaları (`orphan_pages`), çıkmaz sokakları (`dead_end_pages`), eksik YAML frontmatter alanlarını ve MOC eksiklerini denetler. |
+| `engram_ingest` | **Web Clipper (`ingest`):** Herhangi bir web makalesini, GitHub Gist/README bağlantısını veya yerel dosyayı temiz Markdown'a çevirip `Brain/raw/YYYY-MM-DD_<slug>.md` olarak kaydeder, görsellerini `Brain/raw/assets/` altına indirir ve Engram'a indeksler. |
+| `engram_lint` | **Karpathy LLM Wiki Sağlık Denetimi v2.0:** Kırık `[[Wikilink]]`, yetim sayfa, çıkmaz sokak, eksik YAML frontmatter ve MOC kontrolü yapar; **PageRank `top_hubs`** merkezilik skorlarını hesaplar, `unlinked_mentions` (bağlanmamış atıflar) bulup `fix_unlinked=true` ile otomatik bağlar ve `deep_lint=true` ile yerel Ollama üzerinden anlamsal çelişki taraması yapar. |
 | `engram_log` | `Brain/log.md` kronolojik evrim günlüğüne `## [YYYY-MM-DD] islem \| Başlık` formatında kayıt ekler veya son N kaydı okur. |
+| `engram_dashboard` | **İnteraktif HTML Gösterge Paneli:** Tek dosyalık (`dashboard.html`) etkileşimli Force-Directed Bilgi Grafı, KPI kartları, `log.md` zaman çizelgesi ve canlı Atom Gezgini üretir. |
 
 ---
 
@@ -126,18 +128,23 @@ engram sync
 # 2. Senkronize et + bekleyen 5 kaydı yerel Ollama (gemma4:12b-it-qat) ile zenginleştir
 engram sync --enrich 5
 
-# 3. BM25 + Güncellik Ağırlıklı arama yap
-engram search "ollama claude context"
+# 3. BM25 + Çift Dilli TR<->EN Genişletme + Substring + Güncellik Ağırlıklı arama yap
+engram search "önbellek geri basınç MemoryStream"
 
-# 4. Karpathy LLM Wiki sağlık denetimini çalıştır ve sonucu log.md'ye yaz
+# 4. Bir web makalesini veya GitHub Gist'ini Brain/raw/ altına kırp (+ görsellerini raw/assets/ içine indir)
+engram ingest "https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f"
+
+# 5. Karpathy LLM Wiki sağlık denetimi + PageRank + Otomatik Wikilink Onarımı (--fix) + Derin Çelişki Denetimi (--deep)
 engram lint --log
+engram lint --fix
+engram lint --deep
 
-# 5. Kronolojik log.md dosyasına kayıt ekle veya son 5 işlemi gör
+# 6. Tek dosyalık İnteraktif HTML Bilgi Grafı Gösterge Panelini üret ve tarayıcıda aç
+engram dashboard --open
+
+# 7. Kronolojik log.md dosyasına kayıt ekle veya son 5 işlemi gör
 engram log ingest "Yeni Mimari Notu" --details "MOC ve kavram sayfaları güncellendi"
 engram log-tail --count 5
-
-# 6. Veritabanı ve bağlayıcı istatistiklerini görüntüle
-engram stats
 ```
 
 ---

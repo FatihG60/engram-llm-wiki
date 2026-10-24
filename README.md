@@ -85,7 +85,7 @@ The installer:
 
 ---
 
-## 🔌 MCP Server Configuration (7 Tools)
+## 🔌 MCP Server Configuration (9 Tools — v2.0)
 
 Add this block to your MCP configuration (`~/.claude.json`, Cursor MCP settings, or Antigravity `mcp_config.json`):
 
@@ -104,16 +104,18 @@ Add this block to your MCP configuration (`~/.claude.json`, Cursor MCP settings,
 }
 ```
 
-### Exposed MCP Tools
+### Exposed MCP Tools (v2.0)
 | Tool | Description |
 |---|---|
-| `engram_search` | Fast (`<0.5s`) SQLite FTS5 BM25 + Recency Weighted search across all 5 sources. Returns `summary`, `question`, `atoms` (`errors`, `fixes`, `commands`, `decisions`), and `pointer`. |
+| `engram_search` | Fast (`<0.5s`) SQLite FTS5 BM25 + **Bilingual TR↔EN Technical Query Expansion** + **Substring Symbol Fallback** + Recency Weighting across all 5 sources. |
 | `engram_get` | Fetch full `raw_text` of any record by `id` or `source_key` (with strict prompt-injection boundary). |
 | `engram_remember` | Explicitly store a newly discovered root-cause, fix, CLI command, or architectural decision. |
 | `engram_sync` | Run incremental delta ingestion across all 5 connectors (+ optional local Ollama enrichment). |
 | `engram_stats` | Inspect database size, item counts by source, and connector health. |
-| `engram_lint` | **Karpathy LLM Wiki Health Check:** Detects broken `[[Wikilinks]]`, orphan pages, dead-end pages, missing YAML frontmatter (`title`, `tags`, `aliases`, `created`), and unindexed MOC notes. |
+| `engram_ingest` | **Web Clipper (`ingest`):** Convert any web URL (articles, GitHub Gists/READMEs, docs) or local file into `Brain/raw/YYYY-MM-DD_<slug>.md`, download referenced images into `Brain/raw/assets/`, index into Engram, and log to `log.md`. |
+| `engram_lint` | **Karpathy LLM Wiki Auditor v2.0:** Detects broken `[[Wikilinks]]`, orphan/dead-end pages, missing YAML frontmatter, unindexed MOC notes, computes **PageRank `top_hubs`**, detects `unlinked_mentions` (auto-links with `fix_unlinked=true`), and runs `deep_lint=true` local Ollama semantic contradiction checks. |
 | `engram_log` | Append a chronological entry (`## [YYYY-MM-DD] action \| Title`) to `Brain/log.md` or tail the latest entries. |
+| `engram_dashboard` | **Interactive HTML Dashboard:** Generates a single-file Force-Directed Knowledge Graph, KPI strip, chronological `log.md` timeline, and live Atom Explorer (`dashboard.html`). |
 
 ---
 
@@ -126,18 +128,23 @@ python src/engram.py sync
 # 2. Sync + enrich top 5 items with local Ollama (gemma4:12b-it-qat)
 python src/engram.py sync --enrich 5
 
-# 3. Search with BM25 + Recency Weighting
-python src/engram.py search "streaming md5 backpressure"
+# 3. Search with BM25 + Bilingual TR<->EN Expansion + Substring Fallback + Recency Weighting
+python src/engram.py search "önbellek geri basınç MemoryStream"
 
-# 4. Run Karpathy LLM Wiki Health Check (Lint) & append result to Brain/log.md
+# 4. Clip a web article or GitHub Gist into Brain/raw/ (+ download images to raw/assets/)
+python src/engram.py ingest "https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f"
+
+# 5. Run Karpathy LLM Wiki Health Check + PageRank Hubs + Unlinked Mentions (--fix / --deep)
 python src/engram.py lint --log
+python src/engram.py lint --fix
+python src/engram.py lint --deep
 
-# 5. Append or read chronological entries in Brain/log.md
+# 6. Generate & open the single-file Interactive HTML Force-Graph Dashboard
+python src/engram.py dashboard --open
+
+# 7. Append or read chronological entries in Brain/log.md
 python src/engram.py log ingest "Added Raft Consensus Paper" --details "Updated Distributed Systems MOC"
 python src/engram.py log-tail --count 5
-
-# 6. Show database & connector stats
-python src/engram.py stats
 ```
 
 ---
